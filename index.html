@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI秘書構築代行 | 使うほど育つ、あなた専用のAI秘書</title>
+    <meta name="description" content="事業のことを忘れない、毎回説明しなくていいAI秘書。GPTとは違う「記憶するAI」をあなた専用に構築します。">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: { 400: '#818CF8', 500: '#6366F1', 600: '#4F46E5', 700: '#4338CA' },
+                        accent: { 400: '#34D399', 500: '#10B981', 600: '#059669' },
+                        dark: { 800: '#1E293B', 850: '#172033', 900: '#0F172A', 950: '#020617' },
+                    },
+                }
+            }
+        }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        * { scroll-behavior: smooth; }
+        body { font-family: 'Noto Sans JP', system-ui, sans-serif; }
+
+        .glass {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .glass-strong {
+            background: rgba(255, 255, 255, 0.06);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.04);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            transition: all 0.3s ease;
+        }
+        .glass-card:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(99, 102, 241, 0.3);
+            transform: translateY(-4px);
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, #818CF8 0%, #34D399 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .gradient-border {
+            position: relative;
+        }
+        .gradient-border::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            padding: 1px;
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.5), rgba(16, 185, 129, 0.5));
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+        }
+
+        .hero-glow {
+            position: absolute;
+            width: 600px;
+            height: 600px;
+            border-radius: 50%;
+            filter: blur(120px);
+            opacity: 0.15;
+            pointer-events: none;
+        }
+
+        .fade-up {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+        }
+        .fade-up.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .nav-scrolled {
+            background: rgba(2, 6, 23, 0.85) !important;
+            backdrop-filter: blur(16px) !important;
+            -webkit-backdrop-filter: blur(16px) !important;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .cta-button {
+            background: linear-gradient(135deg, #6366F1, #4F46E5);
+            box-shadow: 0 4px 20px rgba(99, 102, 241, 0.3);
+            transition: all 0.3s ease;
+        }
+        .cta-button:hover {
+            box-shadow: 0 6px 30px rgba(99, 102, 241, 0.5);
+            transform: translateY(-2px);
+        }
+
+        /* Comparison table */
+        .compare-gpt {
+            background: rgba(239, 68, 68, 0.05);
+            border: 1px solid rgba(239, 68, 68, 0.15);
+        }
+        .compare-us {
+            background: rgba(99, 102, 241, 0.08);
+            border: 1px solid rgba(99, 102, 241, 0.25);
+        }
+
+        /* Timeline */
+        .timeline-line {
+            position: absolute;
+            left: 23px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: linear-gradient(to bottom, rgba(99, 102, 241, 0.5), rgba(16, 185, 129, 0.5));
+        }
+        .timeline-dot {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            z-index: 10;
+            position: relative;
+        }
+        .timeline-dot::after {
+            content: '';
+            position: absolute;
+            inset: -4px;
+            border-radius: 50%;
+            border: 2px solid rgba(99, 102, 241, 0.2);
+        }
+
+        /* Flow steps */
+        .flow-connector {
+            position: absolute;
+            top: 50%;
+            right: -20px;
+            width: 40px;
+            height: 2px;
+            background: linear-gradient(to right, rgba(99, 102, 241, 0.3), rgba(99, 102, 241, 0.1));
+        }
+
+        .step-line {
+            position: absolute;
+            left: 24px;
+            top: 60px;
+            bottom: -32px;
+            width: 2px;
+            background: linear-gradient(to bottom, rgba(99, 102, 241, 0.4), rgba(99, 102, 241, 0.05));
+        }
+
+        /* FAQ */
+        .faq-answer {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease, padding 0.4s ease;
+        }
+        .faq-answer.open {
+            max-height: 200px;
+            padding-top: 12px;
+        }
+        .faq-toggle {
+            transition: transform 0.3s ease;
+        }
+        .faq-toggle.open {
+            transform: rotate(180deg);
+        }
+
+        input:focus, textarea:focus {
+            box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.3);
+        }
+
+        /* Security shield pulse */
+        .shield-pulse {
+            animation: shield-pulse 3s ease-in-out infinite;
+        }
+        @keyframes shield-pulse {
+            0%, 100% { opacity: 0.15; transform: scale(1); }
+            50% { opacity: 0.25; transform: scale(1.05); }
+        }
+    </style>
+</head>
+<body class="bg-dark-950 text-gray-100 antialiased">
+
+    <!-- Navigation -->
+    <nav id="navbar" class="fixed top-0 left-0 right-0 z-50 transition-all duration-300">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16 md:h-20">
+                <a href="#" class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                        </svg>
+                    </div>
+                    <span class="text-lg font-bold tracking-tight">AI秘書構築代行</span>
+                </a>
+                <div class="hidden md:flex items-center gap-8">
+                    <a href="#comparison" class="text-sm text-gray-400 hover:text-white transition-colors">GPTとの違い</a>
+                    <a href="#growth" class="text-sm text-gray-400 hover:text-white transition-colors">育ち方</a>
+                    <a href="#features" class="text-sm text-gray-400 hover:text-white transition-colors">できること</a>
+                    <a href="#pricing" class="text-sm text-gray-400 hover:text-white transition-colors">料金</a>
+                    <a href="#faq" class="text-sm text-gray-400 hover:text-white transition-colors">FAQ</a>
+                    <a href="#contact" class="text-sm bg-primary-500 hover:bg-primary-600 text-white px-5 py-2 rounded-lg transition-colors font-medium">
+                        無料相談
+                    </a>
+                </div>
+                <button id="mobile-menu-btn" class="md:hidden text-gray-400 hover:text-white p-2" aria-label="メニュー">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <div id="mobile-menu" class="hidden md:hidden glass-strong">
+            <div class="px-4 py-4 space-y-3">
+                <a href="#comparison" class="block text-sm text-gray-300 hover:text-white py-2">GPTとの違い</a>
+                <a href="#growth" class="block text-sm text-gray-300 hover:text-white py-2">育ち方</a>
+                <a href="#features" class="block text-sm text-gray-300 hover:text-white py-2">できること</a>
+                <a href="#pricing" class="block text-sm text-gray-300 hover:text-white py-2">料金</a>
+                <a href="#faq" class="block text-sm text-gray-300 hover:text-white py-2">FAQ</a>
+                <a href="#contact" class="block text-sm bg-primary-500 text-white px-5 py-3 rounded-lg text-center font-medium">無料相談</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ========================================== -->
+    <!-- 1. Hero -->
+    <!-- ========================================== -->
+    <header class="relative min-h-screen flex items-center justify-center px-4 overflow-hidden">
+        <div class="hero-glow bg-primary-500 top-1/4 left-1/4 -translate-x-1/2 -translate-y-1/2"></div>
+        <div class="hero-glow bg-accent-500 bottom-1/4 right-1/4 translate-x-1/2 translate-y-1/2" style="opacity: 0.1;"></div>
+        <div class="absolute inset-0" style="background-image: radial-gradient(rgba(255,255,255,0.03) 1px, transparent 1px); background-size: 40px 40px;"></div>
+
+        <div class="relative max-w-4xl mx-auto text-center pt-20">
+            <div class="inline-block glass rounded-full px-4 py-1.5 text-sm text-gray-400 mb-8 fade-up">
+                GPTとは違う、「記憶する」AI秘書
+            </div>
+            <h1 class="text-4xl sm:text-5xl md:text-7xl font-black mb-6 leading-tight tracking-tight fade-up">
+                <span class="gradient-text">使うほど育つ、</span><br>
+                <span class="text-white">あなた専用のAI秘書</span>
+            </h1>
+            <p class="text-lg md:text-xl text-gray-400 mb-10 max-w-2xl mx-auto leading-relaxed fade-up">
+                事業のことを忘れない。毎回説明しなくていい。<br class="hidden sm:block">
+                あなたの仕事を覚えて、どんどん賢くなるAI秘書を構築します。
+            </p>
+            <div class="flex flex-col sm:flex-row gap-4 justify-center items-center fade-up">
+                <a href="#contact" class="cta-button text-white font-bold py-4 px-10 rounded-xl text-lg inline-flex items-center gap-2">
+                    無料で相談する
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
+                    </svg>
+                </a>
+                <a href="#comparison" class="text-gray-400 hover:text-white font-medium py-4 px-6 transition-colors inline-flex items-center gap-2">
+                    GPTとの違いを見る
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                </a>
+            </div>
+        </div>
+
+        <div class="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-gray-500">
+            <span class="text-xs tracking-widest uppercase">Scroll</span>
+            <div class="w-px h-8 bg-gradient-to-b from-gray-500 to-transparent"></div>
+        </div>
+    </header>
+
+    <!-- ========================================== -->
+    <!-- 2. GPTとの違い（最重要セクション） -->
+    <!-- ========================================== -->
+    <section id="comparison" class="relative py-24 md:py-32 px-4">
+        <div class="absolute inset-0 bg-gradient-to-b from-dark-950 via-dark-900 to-dark-950"></div>
+        <div class="relative max-w-5xl mx-auto">
+            <div class="text-center mb-16 fade-up">
+                <span class="text-primary-400 text-sm font-semibold tracking-wider uppercase">Difference</span>
+                <h2 class="text-3xl md:text-5xl font-bold mt-3 tracking-tight">GPTとは、ここが違います</h2>
+                <p class="text-gray-400 mt-4 max-w-2xl mx-auto">ChatGPTは便利なツールです。でも「秘書」にはなれません。<br class="hidden md:block">秘書に必要なのは、あなたの事業を覚えていることです。</p>
+            </div>
+
+            <!-- Comparison Table -->
+            <div class="fade-up">
+                <!-- Header -->
+                <div class="grid grid-cols-3 gap-3 md:gap-4 mb-3 md:mb-4">
+                    <div></div>
+                    <div class="compare-gpt rounded-xl p-3 md:p-4 text-center">
+                        <div class="text-red-400 text-xs font-semibold tracking-wider uppercase mb-1">ChatGPT</div>
+                        <div class="text-sm md:text-base font-bold text-gray-300">汎用AIツール</div>
+                    </div>
+                    <div class="compare-us rounded-xl p-3 md:p-4 text-center">
+                        <div class="text-primary-400 text-xs font-semibold tracking-wider uppercase mb-1">AI秘書</div>
+                        <div class="text-sm md:text-base font-bold text-white">あなた専用</div>
+                    </div>
+                </div>
+
+                <!-- Row 1: Memory -->
+                <div class="grid grid-cols-3 gap-3 md:gap-4 mb-3 md:mb-4">
+                    <div class="glass-card rounded-xl p-4 md:p-5 flex items-center">
+                        <div class="flex items-center gap-3">
+                            <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"/>
+                            </svg>
+                            <span class="font-bold text-sm md:text-base">記憶力</span>
+                        </div>
+                    </div>
+                    <div class="compare-gpt rounded-xl p-4 md:p-5">
+                        <p class="text-gray-400 text-sm leading-relaxed">会話のたびにリセット。毎回イチから説明が必要。</p>
+                    </div>
+                    <div class="compare-us rounded-xl p-4 md:p-5">
+                        <p class="text-gray-200 text-sm leading-relaxed font-medium">事業内容、好み、過去のやり取りをすべて記憶。</p>
+                    </div>
+                </div>
+
+                <!-- Row 2: Understanding -->
+                <div class="grid grid-cols-3 gap-3 md:gap-4 mb-3 md:mb-4">
+                    <div class="glass-card rounded-xl p-4 md:p-5 flex items-center">
+                        <div class="flex items-center gap-3">
+                            <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                            </svg>
+                            <span class="font-bold text-sm md:text-base">理解度</span>
+                        </div>
+                    </div>
+                    <div class="compare-gpt rounded-xl p-4 md:p-5">
+                        <p class="text-gray-400 text-sm leading-relaxed">誰にでも同じ汎用的な回答。業界知識はゼロ。</p>
+                    </div>
+                    <div class="compare-us rounded-xl p-4 md:p-5">
+                        <p class="text-gray-200 text-sm leading-relaxed font-medium">あなたの事業・業界・方針を理解した上で対応。</p>
+                    </div>
+                </div>
+
+                <!-- Row 3: Knowledge -->
+                <div class="grid grid-cols-3 gap-3 md:gap-4">
+                    <div class="glass-card rounded-xl p-4 md:p-5 flex items-center">
+                        <div class="flex items-center gap-3">
+                            <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                            </svg>
+                            <span class="font-bold text-sm md:text-base">ナレッジ</span>
+                        </div>
+                    </div>
+                    <div class="compare-gpt rounded-xl p-4 md:p-5">
+                        <p class="text-gray-400 text-sm leading-relaxed">自分でファイルを管理して、毎回アップロード。</p>
+                    </div>
+                    <div class="compare-us rounded-xl p-4 md:p-5">
+                        <p class="text-gray-200 text-sm leading-relaxed font-medium">Notionと連携し、業務知識を自動で蓄積・活用。</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom message -->
+            <div class="mt-12 text-center fade-up">
+                <div class="glass-strong rounded-2xl p-6 md:p-8 inline-block max-w-2xl">
+                    <p class="text-lg md:text-xl font-bold text-white leading-relaxed">
+                        「何度も同じ説明をするストレス」から<br>解放されませんか。
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- 3. 育ち方（タイムライン） -->
+    <!-- ========================================== -->
+    <section id="growth" class="relative py-24 md:py-32 px-4">
+        <div class="max-w-4xl mx-auto">
+            <div class="text-center mb-16 fade-up">
+                <span class="text-accent-400 text-sm font-semibold tracking-wider uppercase">Growth</span>
+                <h2 class="text-3xl md:text-5xl font-bold mt-3 tracking-tight">使うほど、賢くなる</h2>
+                <p class="text-gray-400 mt-4">時間が経つほど「あなたのことを分かっている」秘書に育ちます。</p>
+            </div>
+
+            <div class="relative fade-up">
+                <div class="timeline-line hidden md:block"></div>
+                <div class="space-y-8 md:space-y-12">
+                    <!-- Week 1 -->
+                    <div class="relative flex flex-col md:flex-row items-start gap-4 md:gap-6">
+                        <div class="timeline-dot bg-gradient-to-br from-primary-500 to-primary-700 shadow-lg shadow-primary-500/20">
+                            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                            </svg>
+                        </div>
+                        <div class="glass-card rounded-2xl p-6 md:p-8 flex-1">
+                            <div class="flex items-center gap-3 mb-3">
+                                <span class="text-xs font-semibold bg-primary-500/20 text-primary-400 px-3 py-1 rounded-full">1週目</span>
+                            </div>
+                            <h3 class="text-xl font-bold mb-2">基本的な業務をこなす</h3>
+                            <p class="text-gray-400 text-sm leading-relaxed">メールの下書き、スケジュールの確認、簡単なリサーチなど、指示された業務を正確に処理します。まずはあなたの仕事のやり方を学ぶ期間です。</p>
+                        </div>
+                    </div>
+
+                    <!-- Month 1 -->
+                    <div class="relative flex flex-col md:flex-row items-start gap-4 md:gap-6">
+                        <div class="timeline-dot bg-gradient-to-br from-primary-500 to-accent-500 shadow-lg shadow-primary-500/20">
+                            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+                            </svg>
+                        </div>
+                        <div class="glass-card rounded-2xl p-6 md:p-8 flex-1">
+                            <div class="flex items-center gap-3 mb-3">
+                                <span class="text-xs font-semibold bg-primary-500/20 text-primary-400 px-3 py-1 rounded-full">1ヶ月目</span>
+                            </div>
+                            <h3 class="text-xl font-bold mb-2">あなたの好みを把握する</h3>
+                            <p class="text-gray-400 text-sm leading-relaxed">「この人にはこういう文面で」「この案件は急ぎで対応」など、あなたの判断基準や好みを学習。指示がどんどん短くて済むようになります。</p>
+                        </div>
+                    </div>
+
+                    <!-- Month 3 -->
+                    <div class="relative flex flex-col md:flex-row items-start gap-4 md:gap-6">
+                        <div class="timeline-dot bg-gradient-to-br from-accent-500 to-accent-600 shadow-lg shadow-accent-500/20">
+                            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/>
+                            </svg>
+                        </div>
+                        <div class="glass-card rounded-2xl p-6 md:p-8 flex-1 gradient-border">
+                            <div class="flex items-center gap-3 mb-3">
+                                <span class="text-xs font-semibold bg-accent-500/20 text-accent-400 px-3 py-1 rounded-full">3ヶ月目</span>
+                            </div>
+                            <h3 class="text-xl font-bold mb-2">先回りして提案してくる</h3>
+                            <p class="text-gray-400 text-sm leading-relaxed">「来週の会議、資料を準備しておきましょうか」「この件、前回と同じ対応でいいですか」。聞かれる前に動く、本当の秘書になります。</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- 4. できること -->
+    <!-- ========================================== -->
+    <section id="features" class="relative py-24 md:py-32 px-4">
+        <div class="absolute inset-0 bg-gradient-to-b from-dark-950 via-dark-900 to-dark-950"></div>
+        <div class="relative max-w-5xl mx-auto">
+            <div class="text-center mb-16 fade-up">
+                <span class="text-primary-400 text-sm font-semibold tracking-wider uppercase">Features</span>
+                <h2 class="text-3xl md:text-5xl font-bold mt-3 tracking-tight">AI秘書ができること</h2>
+                <p class="text-gray-400 mt-4">日々の雑務を任せて、あなたは経営判断に集中してください。</p>
+            </div>
+            <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 fade-up">
+                <!-- Feature 1 -->
+                <div class="glass-card rounded-2xl p-6 md:p-8">
+                    <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-500/20 to-primary-500/5 flex items-center justify-center mb-5">
+                        <svg class="w-6 h-6 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-lg font-bold mb-2">メール下書き</h3>
+                    <p class="text-gray-400 text-sm leading-relaxed">相手との関係性やこれまでのやり取りを踏まえて、適切なトーンで下書きを作成します。</p>
+                </div>
+                <!-- Feature 2 -->
+                <div class="glass-card rounded-2xl p-6 md:p-8">
+                    <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-accent-500/20 to-accent-500/5 flex items-center justify-center mb-5">
+                        <svg class="w-6 h-6 text-accent-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-lg font-bold mb-2">スケジュール調整</h3>
+                    <p class="text-gray-400 text-sm leading-relaxed">空き時間の確認、候補日の提示、リマインドまで。調整のやり取りを丸ごとお任せ。</p>
+                </div>
+                <!-- Feature 3 -->
+                <div class="glass-card rounded-2xl p-6 md:p-8">
+                    <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-500/5 flex items-center justify-center mb-5">
+                        <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-lg font-bold mb-2">リサーチ・情報収集</h3>
+                    <p class="text-gray-400 text-sm leading-relaxed">競合調査、市場動向、業界ニュースなど、必要な情報を集めて要点をまとめます。</p>
+                </div>
+                <!-- Feature 4 -->
+                <div class="glass-card rounded-2xl p-6 md:p-8">
+                    <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500/20 to-cyan-500/5 flex items-center justify-center mb-5">
+                        <svg class="w-6 h-6 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-lg font-bold mb-2">日報・週報作成</h3>
+                    <p class="text-gray-400 text-sm leading-relaxed">日々の活動を整理して、見やすいレポートを自動で作成。報告業務の手間をゼロに。</p>
+                </div>
+                <!-- Feature 5 -->
+                <div class="glass-card rounded-2xl p-6 md:p-8 sm:col-span-2 lg:col-span-2">
+                    <div class="flex flex-col sm:flex-row gap-5 items-start">
+                        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500/20 to-violet-500/5 flex items-center justify-center flex-shrink-0">
+                            <svg class="w-6 h-6 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-bold mb-2">Notion連携でナレッジ蓄積</h3>
+                            <p class="text-gray-400 text-sm leading-relaxed">会議メモ、議事録、業務ノウハウをNotionに自動で整理・蓄積。探す時間がなくなり、社内の知識が資産として積み上がります。情報は「聞けば出てくる」状態に。</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- 5. セキュリティ -->
+    <!-- ========================================== -->
+    <section class="relative py-24 md:py-32 px-4 overflow-hidden">
+        <div class="max-w-4xl mx-auto">
+            <div class="fade-up">
+                <div class="glass-strong rounded-3xl p-8 md:p-12 lg:p-16 relative overflow-hidden">
+                    <!-- Background decoration -->
+                    <div class="absolute top-0 right-0 w-64 h-64 bg-accent-500/5 rounded-full blur-3xl shield-pulse"></div>
+
+                    <div class="relative flex flex-col md:flex-row items-center gap-8 md:gap-12">
+                        <!-- Shield Icon -->
+                        <div class="flex-shrink-0">
+                            <div class="w-24 h-24 md:w-32 md:h-32 rounded-2xl bg-gradient-to-br from-accent-500/10 to-accent-500/5 flex items-center justify-center border border-accent-500/20">
+                                <svg class="w-12 h-12 md:w-16 md:h-16 text-accent-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                                </svg>
+                            </div>
+                        </div>
+
+                        <!-- Content -->
+                        <div class="text-center md:text-left">
+                            <span class="text-accent-400 text-sm font-semibold tracking-wider uppercase">Security</span>
+                            <h2 class="text-2xl md:text-4xl font-bold mt-2 mb-4 tracking-tight">データは、あなたの手元に</h2>
+                            <p class="text-gray-400 leading-relaxed mb-6">
+                                AI秘書はあなたのPC上で動きます。<br>
+                                大事な事業データがクラウドに流れることはありません。<br>
+                                机の上で動いている安心感。それが私たちの設計思想です。
+                            </p>
+                            <div class="flex flex-col sm:flex-row gap-4">
+                                <div class="flex items-center gap-2 text-sm text-gray-300">
+                                    <svg class="w-4 h-4 text-accent-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                    </svg>
+                                    クラウドにデータを送らない
+                                </div>
+                                <div class="flex items-center gap-2 text-sm text-gray-300">
+                                    <svg class="w-4 h-4 text-accent-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                    </svg>
+                                    操作範囲を制限可能
+                                </div>
+                                <div class="flex items-center gap-2 text-sm text-gray-300">
+                                    <svg class="w-4 h-4 text-accent-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                    </svg>
+                                    あなた専用の環境
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- 6. 料金 -->
+    <!-- ========================================== -->
+    <section id="pricing" class="relative py-24 md:py-32 px-4">
+        <div class="absolute inset-0 bg-gradient-to-b from-dark-950 via-dark-900 to-dark-950"></div>
+        <div class="relative max-w-5xl mx-auto">
+            <div class="text-center mb-16 fade-up">
+                <span class="text-accent-400 text-sm font-semibold tracking-wider uppercase">Pricing</span>
+                <h2 class="text-3xl md:text-5xl font-bold mt-3 tracking-tight">料金プラン</h2>
+                <p class="text-gray-400 mt-4">人間の秘書を雇うコストの10分の1以下で、24時間稼働します。</p>
+            </div>
+            <div class="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto fade-up">
+                <!-- Initial Build -->
+                <div class="glass-card rounded-2xl p-8 md:p-10">
+                    <div class="text-sm text-gray-400 font-medium mb-2 tracking-wider uppercase">Initial Setup</div>
+                    <h3 class="text-2xl font-bold mb-6">初期構築</h3>
+                    <div class="mb-8">
+                        <span class="text-4xl md:text-5xl font-black gradient-text">300,000</span>
+                        <span class="text-gray-400 text-lg ml-1">円 (税別) ~</span>
+                    </div>
+                    <ul class="space-y-4 mb-8">
+                        <li class="flex items-start gap-3 text-gray-300">
+                            <svg class="w-5 h-5 text-accent-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                            </svg>
+                            <span class="text-sm">あなた専用のAI環境を構築</span>
+                        </li>
+                        <li class="flex items-start gap-3 text-gray-300">
+                            <svg class="w-5 h-5 text-accent-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                            </svg>
+                            <span class="text-sm">秘書の性格・対応スタイルを設計</span>
+                        </li>
+                        <li class="flex items-start gap-3 text-gray-300">
+                            <svg class="w-5 h-5 text-accent-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                            </svg>
+                            <span class="text-sm">業務に合わせた機能を実装</span>
+                        </li>
+                        <li class="flex items-start gap-3 text-gray-300">
+                            <svg class="w-5 h-5 text-accent-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                            </svg>
+                            <span class="text-sm">チャットツール連携 (Slack / LINE等)</span>
+                        </li>
+                        <li class="flex items-start gap-3 text-gray-300">
+                            <svg class="w-5 h-5 text-accent-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                            </svg>
+                            <span class="text-sm">導入後2週間の手厚いサポート</span>
+                        </li>
+                    </ul>
+                    <a href="#contact" class="block text-center py-3 px-6 rounded-xl border border-gray-600 text-gray-300 hover:border-primary-500 hover:text-white transition-all text-sm font-medium">
+                        詳細を相談する
+                    </a>
+                </div>
+                <!-- Monthly -->
+                <div class="glass-card rounded-2xl p-8 md:p-10 relative overflow-hidden gradient-border" style="background: rgba(99, 102, 241, 0.04);">
+                    <div class="absolute top-4 right-4">
+                        <span class="text-xs font-semibold bg-primary-500/20 text-primary-400 px-3 py-1 rounded-full">おすすめ</span>
+                    </div>
+                    <div class="text-sm text-gray-400 font-medium mb-2 tracking-wider uppercase">Monthly Support</div>
+                    <h3 class="text-2xl font-bold mb-6">月額保守</h3>
+                    <div class="mb-8">
+                        <span class="text-4xl md:text-5xl font-black gradient-text">50,000</span>
+                        <span class="text-gray-400 text-lg ml-1">円/月 (税別) ~</span>
+                    </div>
+                    <ul class="space-y-4 mb-8">
+                        <li class="flex items-start gap-3 text-gray-300">
+                            <svg class="w-5 h-5 text-accent-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                            </svg>
+                            <span class="text-sm">秘書の動作確認・トラブル対応</span>
+                        </li>
+                        <li class="flex items-start gap-3 text-gray-300">
+                            <svg class="w-5 h-5 text-accent-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                            </svg>
+                            <span class="text-sm">新しい機能の追加・改善</span>
+                        </li>
+                        <li class="flex items-start gap-3 text-gray-300">
+                            <svg class="w-5 h-5 text-accent-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                            </svg>
+                            <span class="text-sm">秘書の精度向上・チューニング</span>
+                        </li>
+                        <li class="flex items-start gap-3 text-gray-300">
+                            <svg class="w-5 h-5 text-accent-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                            </svg>
+                            <span class="text-sm">月次レポート</span>
+                        </li>
+                        <li class="flex items-start gap-3 text-gray-300">
+                            <svg class="w-5 h-5 text-accent-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                            </svg>
+                            <span class="text-sm">チャットでいつでも相談</span>
+                        </li>
+                    </ul>
+                    <a href="#contact" class="cta-button block text-center py-3 px-6 rounded-xl text-white text-sm font-medium">
+                        今すぐ相談する
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- 7. 導入の流れ -->
+    <!-- ========================================== -->
+    <section id="flow" class="relative py-24 md:py-32 px-4">
+        <div class="max-w-5xl mx-auto">
+            <div class="text-center mb-16 fade-up">
+                <span class="text-primary-400 text-sm font-semibold tracking-wider uppercase">Flow</span>
+                <h2 class="text-3xl md:text-5xl font-bold mt-3 tracking-tight">導入の流れ</h2>
+                <p class="text-gray-400 mt-4">ヒアリングから最短2週間で、あなた専用のAI秘書が動き出します。</p>
+            </div>
+
+            <!-- Desktop: Horizontal -->
+            <div class="hidden md:block fade-up">
+                <div class="grid grid-cols-5 gap-2">
+                    <div class="text-center">
+                        <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-primary-500/20">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                            </svg>
+                        </div>
+                        <div class="text-xs font-semibold text-primary-400 mb-1">Step 1</div>
+                        <h4 class="font-bold text-sm mb-1">ヒアリング</h4>
+                        <p class="text-gray-500 text-xs leading-relaxed">課題や要望をお伺いします</p>
+                    </div>
+                    <div class="flex items-start justify-center pt-7">
+                        <svg class="w-8 h-8 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
+                        </svg>
+                    </div>
+                    <div class="text-center">
+                        <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-primary-500/20">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                            </svg>
+                        </div>
+                        <div class="text-xs font-semibold text-primary-400 mb-1">Step 2</div>
+                        <h4 class="font-bold text-sm mb-1">設計・構築</h4>
+                        <p class="text-gray-500 text-xs leading-relaxed">あなた専用の秘書を構築</p>
+                    </div>
+                    <div class="flex items-start justify-center pt-7">
+                        <svg class="w-8 h-8 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
+                        </svg>
+                    </div>
+                    <div class="text-center">
+                        <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-accent-500 to-accent-600 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-accent-500/20">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/>
+                            </svg>
+                        </div>
+                        <div class="text-xs font-semibold text-accent-400 mb-1">Step 3</div>
+                        <h4 class="font-bold text-sm mb-1">納品・運用開始</h4>
+                        <p class="text-gray-500 text-xs leading-relaxed">AI秘書が稼働開始</p>
+                    </div>
+                </div>
+                <!-- Support bar -->
+                <div class="mt-10 glass-card rounded-2xl p-5 flex items-center justify-center gap-4">
+                    <svg class="w-5 h-5 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                    </svg>
+                    <p class="text-sm text-gray-400">納品後も<span class="text-white font-medium">継続的にサポート</span>。使いながら改善し、秘書の精度を上げ続けます。</p>
+                </div>
+            </div>
+
+            <!-- Mobile: Vertical -->
+            <div class="md:hidden space-y-6 fade-up">
+                <div class="relative flex items-start gap-5">
+                    <div class="step-line"></div>
+                    <div class="w-12 h-12 rounded-full bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center flex-shrink-0 z-10 shadow-lg shadow-primary-500/20">
+                        <span class="text-sm font-bold text-white">1</span>
+                    </div>
+                    <div class="glass-card rounded-xl p-5 flex-1">
+                        <h4 class="font-bold mb-1">ヒアリング</h4>
+                        <p class="text-gray-400 text-sm">課題や要望をお伺いします。オンラインで30分程度。</p>
+                    </div>
+                </div>
+                <div class="relative flex items-start gap-5">
+                    <div class="step-line"></div>
+                    <div class="w-12 h-12 rounded-full bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center flex-shrink-0 z-10 shadow-lg shadow-primary-500/20">
+                        <span class="text-sm font-bold text-white">2</span>
+                    </div>
+                    <div class="glass-card rounded-xl p-5 flex-1">
+                        <h4 class="font-bold mb-1">設計・構築</h4>
+                        <p class="text-gray-400 text-sm">あなた専用のAI秘書を設計し、構築します。</p>
+                    </div>
+                </div>
+                <div class="relative flex items-start gap-5">
+                    <div class="w-12 h-12 rounded-full bg-gradient-to-br from-accent-500 to-accent-600 flex items-center justify-center flex-shrink-0 z-10 shadow-lg shadow-accent-500/20">
+                        <span class="text-sm font-bold text-white">3</span>
+                    </div>
+                    <div class="glass-card rounded-xl p-5 flex-1">
+                        <h4 class="font-bold mb-1">納品・運用開始</h4>
+                        <p class="text-gray-400 text-sm">AI秘書が稼働。納品後も継続サポートで改善し続けます。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- 8. FAQ -->
+    <!-- ========================================== -->
+    <section id="faq" class="relative py-24 md:py-32 px-4">
+        <div class="absolute inset-0 bg-gradient-to-b from-dark-950 via-dark-900 to-dark-950"></div>
+        <div class="relative max-w-3xl mx-auto">
+            <div class="text-center mb-16 fade-up">
+                <span class="text-accent-400 text-sm font-semibold tracking-wider uppercase">FAQ</span>
+                <h2 class="text-3xl md:text-5xl font-bold mt-3 tracking-tight">よくある質問</h2>
+            </div>
+            <div class="space-y-4 fade-up">
+                <div class="glass-card rounded-2xl overflow-hidden">
+                    <button class="faq-btn w-full text-left p-6 flex items-center justify-between gap-4" aria-expanded="false">
+                        <span class="font-bold">ChatGPTと何が違うのですか</span>
+                        <svg class="faq-toggle w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </button>
+                    <div class="faq-answer px-6 pb-6">
+                        <p class="text-gray-400 text-sm leading-relaxed">ChatGPTは汎用の対話AIで、会話のたびにリセットされます。AI秘書はあなたの事業内容・好み・過去のやり取りを記憶し、使うほど精度が上がります。また、Notionなど普段のツールと連携して業務を自動化できる点も大きな違いです。</p>
+                    </div>
+                </div>
+                <div class="glass-card rounded-2xl overflow-hidden">
+                    <button class="faq-btn w-full text-left p-6 flex items-center justify-between gap-4" aria-expanded="false">
+                        <span class="font-bold">AIに詳しくなくても使えますか</span>
+                        <svg class="faq-toggle w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </button>
+                    <div class="faq-answer px-6 pb-6">
+                        <p class="text-gray-400 text-sm leading-relaxed">はい、普段お使いのSlackやLINEから話しかけるだけで操作できます。技術的な知識は一切必要ありません。構築・設定はすべて私たちが行い、使い方も丁寧にお伝えします。</p>
+                    </div>
+                </div>
+                <div class="glass-card rounded-2xl overflow-hidden">
+                    <button class="faq-btn w-full text-left p-6 flex items-center justify-between gap-4" aria-expanded="false">
+                        <span class="font-bold">情報が外部に漏れる心配はありませんか</span>
+                        <svg class="faq-toggle w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </button>
+                    <div class="faq-answer px-6 pb-6">
+                        <p class="text-gray-400 text-sm leading-relaxed">AI秘書はお客様のPC上で動作するため、事業データが外部のクラウドに送られることはありません。操作範囲も細かく制限できるので、安心してお使いいただけます。</p>
+                    </div>
+                </div>
+                <div class="glass-card rounded-2xl overflow-hidden">
+                    <button class="faq-btn w-full text-left p-6 flex items-center justify-between gap-4" aria-expanded="false">
+                        <span class="font-bold">導入までどれくらいかかりますか</span>
+                        <svg class="faq-toggle w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </button>
+                    <div class="faq-answer px-6 pb-6">
+                        <p class="text-gray-400 text-sm leading-relaxed">標準的な構成で2~4週間です。まずは基本機能で稼働させ、使いながら機能を追加していくアプローチなので、最短2週間でお使い始められます。</p>
+                    </div>
+                </div>
+                <div class="glass-card rounded-2xl overflow-hidden">
+                    <button class="faq-btn w-full text-left p-6 flex items-center justify-between gap-4" aria-expanded="false">
+                        <span class="font-bold">途中で解約できますか</span>
+                        <svg class="faq-toggle w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </button>
+                    <div class="faq-answer px-6 pb-6">
+                        <p class="text-gray-400 text-sm leading-relaxed">はい、月額保守プランは1ヶ月前のご連絡で解約可能です。構築済みのAI秘書はそのままお使いいただけます。縛り期間はありません。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- CTA -->
+    <!-- ========================================== -->
+    <section class="relative py-24 md:py-32 px-4 overflow-hidden">
+        <div class="absolute inset-0">
+            <div class="hero-glow bg-primary-500 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"></div>
+        </div>
+        <div class="relative max-w-3xl mx-auto text-center fade-up">
+            <h2 class="text-3xl md:text-5xl font-bold tracking-tight mb-6">
+                毎回の説明から、<br>解放されませんか
+            </h2>
+            <p class="text-gray-400 mb-10 max-w-xl mx-auto leading-relaxed">
+                あなたの事業を覚えている秘書がいたら、どれだけ楽になるか。<br>
+                まずは30分の無料相談で、お話しさせてください。
+            </p>
+            <a href="#contact" class="cta-button text-white font-bold py-4 px-10 rounded-xl text-lg inline-flex items-center gap-2">
+                無料で相談する
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
+                </svg>
+            </a>
+        </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- 9. 問い合わせフォーム -->
+    <!-- ========================================== -->
+    <section id="contact" class="relative py-24 md:py-32 px-4">
+        <div class="absolute inset-0 bg-gradient-to-b from-dark-950 via-dark-900 to-dark-950"></div>
+        <div class="relative max-w-2xl mx-auto">
+            <div class="text-center mb-12 fade-up">
+                <span class="text-primary-400 text-sm font-semibold tracking-wider uppercase">Contact</span>
+                <h2 class="text-3xl md:text-5xl font-bold mt-3 tracking-tight">無料相談</h2>
+                <p class="text-gray-400 mt-4">お気軽にご相談ください。通常1営業日以内にご連絡いたします。</p>
+            </div>
+            <form action="https://formspree.io/f/YOUR_FORM_ID" method="POST" class="glass-strong rounded-2xl p-8 md:p-10 space-y-6 fade-up">
+                <div class="grid sm:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">お名前 <span class="text-red-400">*</span></label>
+                        <input type="text" name="name" required
+                            class="w-full px-4 py-3 bg-dark-950/50 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-primary-500 transition-colors"
+                            placeholder="山田 太郎">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">会社名</label>
+                        <input type="text" name="company"
+                            class="w-full px-4 py-3 bg-dark-950/50 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-primary-500 transition-colors"
+                            placeholder="株式会社サンプル">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">メールアドレス <span class="text-red-400">*</span></label>
+                    <input type="email" name="email" required
+                        class="w-full px-4 py-3 bg-dark-950/50 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-primary-500 transition-colors"
+                        placeholder="mail@example.com">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">ご相談内容 <span class="text-red-400">*</span></label>
+                    <textarea name="message" rows="5" required
+                        class="w-full px-4 py-3 bg-dark-950/50 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-primary-500 transition-colors resize-none"
+                        placeholder="現在の課題やAI秘書に任せたい業務などをお聞かせください"></textarea>
+                </div>
+                <button type="submit" class="cta-button w-full text-white font-bold py-4 px-8 rounded-xl text-lg transition-all">
+                    送信する
+                </button>
+                <p class="text-xs text-gray-500 text-center">送信いただいた情報は、お問い合わせへの対応のみに使用いたします。</p>
+            </form>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="border-t border-white/5 py-12 px-4">
+        <div class="max-w-5xl mx-auto">
+            <div class="flex flex-col md:flex-row items-center justify-between gap-6">
+                <div class="flex items-center gap-2">
+                    <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center">
+                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                        </svg>
+                    </div>
+                    <span class="text-sm font-semibold text-gray-300">AI秘書構築代行</span>
+                </div>
+                <div class="flex items-center gap-6 text-sm text-gray-500">
+                    <a href="#comparison" class="hover:text-gray-300 transition-colors">GPTとの違い</a>
+                    <a href="#features" class="hover:text-gray-300 transition-colors">できること</a>
+                    <a href="#pricing" class="hover:text-gray-300 transition-colors">料金</a>
+                    <a href="#contact" class="hover:text-gray-300 transition-colors">お問い合わせ</a>
+                </div>
+            </div>
+            <div class="mt-8 pt-8 border-t border-white/5 text-center">
+                <p class="text-xs text-gray-600">&copy; 2026 AI秘書構築代行. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Navbar scroll effect
+        const navbar = document.getElementById('navbar');
+        window.addEventListener('scroll', () => {
+            navbar.classList.toggle('nav-scrolled', window.scrollY > 50);
+        });
+
+        // Mobile menu toggle
+        const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+        const mobileMenu = document.getElementById('mobile-menu');
+        mobileMenuBtn.addEventListener('click', () => {
+            mobileMenu.classList.toggle('hidden');
+        });
+        mobileMenu.querySelectorAll('a').forEach(link => {
+            link.addEventListener('click', () => mobileMenu.classList.add('hidden'));
+        });
+
+        // FAQ accordion
+        document.querySelectorAll('.faq-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const answer = btn.nextElementSibling;
+                const icon = btn.querySelector('.faq-toggle');
+                const isOpen = answer.classList.contains('open');
+
+                document.querySelectorAll('.faq-answer').forEach(a => a.classList.remove('open'));
+                document.querySelectorAll('.faq-toggle').forEach(i => i.classList.remove('open'));
+                document.querySelectorAll('.faq-btn').forEach(b => b.setAttribute('aria-expanded', 'false'));
+
+                if (!isOpen) {
+                    answer.classList.add('open');
+                    icon.classList.add('open');
+                    btn.setAttribute('aria-expanded', 'true');
+                }
+            });
+        });
+
+        // Scroll reveal
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) entry.target.classList.add('visible');
+            });
+        }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+
+        document.querySelectorAll('.fade-up').forEach(el => observer.observe(el));
+    </script>
+</body>
+</html>
